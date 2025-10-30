@@ -1,0 +1,79 @@
+
+/* ======== server.js (Node + Socket.io + Simple HTML Chat UI) ======== */
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const path = require("path");
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+// Serve static HTML file
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
+// Handle socket connections
+io.on("connection", (socket) => {
+  console.log("User connected:", socket.id);
+
+  socket.on("send_message", (msg) => {
+    io.emit("receive_message", msg); // broadcast to everyone
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
+  });
+});
+
+// Start server
+server.listen(4000, () => {
+  console.log("✅ Server running on http://localhost:4000");
+});
+
+
+/* ======== index.html (Frontend UI for Chat) ======== */
+`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simple Real-Time Chat</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    body { font-family: Arial; background: #f0f0f0; text-align: center; margin-top: 50px; }
+    #chat-box { width: 300px; margin: 20px auto; background: white; padding: 10px; border-radius: 10px; height: 300px; overflow-y: auto; }
+    input { padding: 8px; width: 200px; border-radius: 5px; border: 1px solid #ccc; }
+    button { padding: 8px 12px; border: none; border-radius: 5px; background: #4CAF50; color: white; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h2>💬 Real-Time Chat App</h2>
+  <div id="chat-box"></div>
+  <input id="message" placeholder="Type your message..." />
+  <button onclick="sendMessage()">Send</button>
+
+  <script>
+    const socket = io();
+
+    socket.on("receive_message", (msg) => {
+      const box = document.getElementById("chat-box");
+      const p = document.createElement("p");
+      p.textContent = msg;
+      box.appendChild(p);
+      box.scrollTop = box.scrollHeight;
+    });
+
+    function sendMessage() {
+      const msg = document.getElementById("message").value;
+      if (msg.trim() !== "") {
+        socket.emit("send_message", msg);
+        document.getElementById("message").value = "";
+      }
+    }
+  </script>
+</body>
+</html>
+`
